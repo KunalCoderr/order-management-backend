@@ -2,13 +2,7 @@
 using OrderManagement.Models;
 using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
-using OrderManagement.Services;
 using OrderManagement.Services.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 
 namespace OrderManagement.Controllers
@@ -29,13 +23,21 @@ namespace OrderManagement.Controllers
         [Route("register")]
         public IHttpActionResult Register(UserDTO dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Username) || !CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Password))
                 return BadRequest("Username and password are required.");
+          
+            dto.Username = CommonUtils.CommonUtils.ToTitleCase(dto.Username);
+            CommonUtils.CommonUtils.LogMessage($"Attempted registration: {dto.Username}");
 
             bool result = _userService.Register(dto);
 
             if (!result)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Registration failed: Username '{dto.Username}' already exists.");
                 return BadRequest("Username already exists.");
+            }
+
+            CommonUtils.CommonUtils.LogMessage($"User '{dto.Username}' registered successfully.");
 
             return Ok("User registered successfully.");
         }
@@ -44,13 +46,20 @@ namespace OrderManagement.Controllers
         [Route("login")]
         public IHttpActionResult Login(UserDTO dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Username) || !CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Password))
                 return BadRequest("Username and password are required.");
+
+            CommonUtils.CommonUtils.LogMessage($"Login attempt for: {dto.Username}");
 
             var token = _userService.Login(dto);
 
             if (token == null)
+            {
+                CommonUtils.CommonUtils.LogMessage($"CommonUtils: {dto.Username}");
                 return Unauthorized();
+            }
+
+            CommonUtils.CommonUtils.LogMessage($"Login successful for: {dto.Username}");
 
             return Ok(new
             {

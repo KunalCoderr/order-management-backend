@@ -53,7 +53,19 @@ namespace OrderManagement.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
+                return BadRequest("Product name is required.");
+
+            // Format product name to Title Case using CommonUtils
+            dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
+
+            // Optional: Log product creation request
+            CommonUtils.CommonUtils.LogMessage($"Creating product: Name='{dto.Name}', Price={dto.Price}");
+
             _service.Create(dto);
+
+            // Log success
+            CommonUtils.CommonUtils.LogMessage($"Product '{dto.Name}' created successfully.");
             return Ok("Product created.");
         }
 
@@ -64,11 +76,21 @@ namespace OrderManagement.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Validate incoming data
+            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
+                return BadRequest("Product name is required.");
+
+            dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
+
             var existing = _service.Get(id);
             if (existing == null)
                 return NotFound();
 
+            CommonUtils.CommonUtils.LogMessage($"Updating product id={id}: New Name='{dto.Name}', Price={dto.Price}");
+
             _service.Update(id, dto);
+            CommonUtils.CommonUtils.LogMessage($"Product id={id} updated successfully.");
+
             return Ok("Product updated.");
         }
 
