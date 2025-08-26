@@ -7,11 +7,10 @@ using System.Threading.Tasks;
 
 namespace OrderManagement.Services.Contracts
 {
-    public interface IUserService
+    public interface IOrderService
     {
-        bool Register(UserDTO dto);
-        string Login(UserDTO dto);
-        bool IsTokenValid(string token);
-        SessionInfo GetSession(string token);
+        void PlaceOrder(PlaceOrderRequest request);
+        List<OrderHistory> GetOrderHistory(int userId);
     }
+
 }

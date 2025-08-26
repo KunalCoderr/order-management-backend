@@ -24,7 +24,12 @@ namespace OrderManagement.Services
 
         public void Set<T>(string key, T value, TimeSpan expiry)
         {
-            var json = JsonConvert.SerializeObject(value);
+            var settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            };
+
+            var json = JsonConvert.SerializeObject(value, settings);
             Cache.StringSet(key, json, expiry);
         }
 

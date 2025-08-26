@@ -14,8 +14,8 @@ namespace OrderManagement.Services
         private readonly IUserRepository _userRepo;
 
         //private static Dictionary<string, (string Username, DateTime Expiry)> _sessionStore = new Dictionary<string, (string Username, DateTime Expiry)>();
-        private static ConcurrentDictionary<string, (string Username, DateTime Expiry)> _sessionStore
-            = new ConcurrentDictionary<string, (string Username, DateTime Expiry)>();
+        private static ConcurrentDictionary<string, (int id, string Username, DateTime Expiry)> _sessionStore
+            = new ConcurrentDictionary<string, (int id, string Username, DateTime Expiry)>();
 
         public UserService(IUserRepository userRepo)
         {
@@ -55,7 +55,7 @@ namespace OrderManagement.Services
             var token = Guid.NewGuid().ToString();
             var expiry = DateTime.UtcNow.AddHours(1);
 
-            _sessionStore[token] = (user.Username, expiry);
+            _sessionStore[token] = (user.Id, user.Username, expiry);
 
             return token;
         }
@@ -73,6 +73,27 @@ namespace OrderManagement.Services
             }
 
             return false;
+        }
+
+        public SessionInfo GetSession(string token)
+        {
+            if (_sessionStore.TryGetValue(token, out var session))
+            {
+                if (session.Expiry < DateTime.UtcNow)
+                {
+                    _sessionStore.TryRemove(token, out _);
+                    return null;
+                }
+
+                return new SessionInfo
+                {
+                    UserId = session.id,
+                    Username = session.Username,
+                    Expiry = session.Expiry
+                };
+            }
+
+            return null;
         }
     }
 }

@@ -40,3 +40,4 @@ TestResults/
 
 # NUNIT
 *.V*
+/CommonUtils/obj/
