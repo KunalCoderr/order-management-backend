@@ -30,6 +30,9 @@ namespace OrderManagement
             container.RegisterType<IProductRepository, ProductRepository>(new HierarchicalLifetimeManager());
             container.RegisterType<IProductService, ProductService>(new HierarchicalLifetimeManager());
 
+            container.RegisterType<IOrderRepository, OrderRepository>(new HierarchicalLifetimeManager());
+            container.RegisterType<IOrderService, OrderService>(new HierarchicalLifetimeManager());
+
             // Set the Web API dependency resolver
             GlobalConfiguration.Configuration.DependencyResolver = new UnityDependencyResolver(container);
 

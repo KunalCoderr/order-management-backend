@@ -1,8 +1,10 @@
 ﻿using OrderManagement.DTOsModels;
+using OrderManagement.Filters;
 using OrderManagement.Models;
 using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
+using System;
 using System.Web.Http;
 
 namespace OrderManagement.Controllers
@@ -66,6 +68,21 @@ namespace OrderManagement.Controllers
                 Message = "Login successful",
                 Token = token
             });
+        }
+
+        [HttpGet]
+        [Route("session")]
+        public IHttpActionResult GetSessionInfo([FromUri] string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return Unauthorized();
+
+            var session = _userService.GetSession(token);
+
+            if (session == null)
+                return Unauthorized();
+
+            return Ok(session);
         }
     }
 }
