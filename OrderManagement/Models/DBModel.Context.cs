@@ -18,6 +18,8 @@ namespace OrderManagement.Models
         public OrderManagementEntities()
             : base("name=OrderManagementEntities")
         {
+            this.Configuration.ProxyCreationEnabled = false;
+            this.Configuration.LazyLoadingEnabled = false;
         }
     
         protected override void OnModelCreating(DbModelBuilder modelBuilder)

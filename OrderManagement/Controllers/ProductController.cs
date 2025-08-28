@@ -3,13 +3,8 @@ using OrderManagement.Filters;
 using OrderManagement.Models;
 using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
-using OrderManagement.Services;
 using OrderManagement.Services.Contracts;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 
 namespace OrderManagement.Controllers
@@ -22,8 +17,7 @@ namespace OrderManagement.Controllers
 
         public ProductController(IProductService service)
         {
-            // Manually instantiate required dependencies
-            var dbContext = new OrderManagementEntities(); // your EF context
+            var dbContext = new OrderManagementEntities();
             IProductRepository productRepository = new ProductRepository(dbContext);
             _service = service;
         }
@@ -32,78 +26,122 @@ namespace OrderManagement.Controllers
         [Route("")]
         public IHttpActionResult GetAll()
         {
-            var products = _service.GetAll();
-            return Ok(products);
+            try
+            {
+                var products = _service.GetAll();
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Unexpected error in GetAll Products: {ex.Message}\n{ex.StackTrace}");
+
+                return InternalServerError();
+            }
         }
 
         [HttpGet]
         [Route("{id:int}")]
         public IHttpActionResult Get(int id)
         {
-            var product = _service.Get(id);
-            if (product == null)
-                return NotFound();
-            return Ok(product);
+            try
+            {
+                var product = _service.Get(id);
+
+                if (product == null)
+                    return NotFound();
+
+                return Ok(product);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Unexpected error in product by Id Get({id} : {ex.Message}\n{ex.StackTrace}");
+
+                return InternalServerError();
+            }
         }
 
         [HttpPost]
         [Route("")]
         public IHttpActionResult Create(ProductDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
-            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
-                return BadRequest("Product name is required.");
+                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
+                    return BadRequest("Product name is required.");
 
-            // Format product name to Title Case using CommonUtils
-            dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
+                // Format product name to Title Case using CommonUtils
+                dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
 
-            // Optional: Log product creation request
-            CommonUtils.CommonUtils.LogMessage($"Creating product: Name='{dto.Name}', Price={dto.Price}");
+                CommonUtils.CommonUtils.LogMessage($"Creating product: Name='{dto.Name}', Price={dto.Price}");
 
-            _service.Create(dto);
+                _service.Create(dto);
 
-            // Log success
-            CommonUtils.CommonUtils.LogMessage($"Product '{dto.Name}' created successfully.");
-            return Ok("Product created.");
+                CommonUtils.CommonUtils.LogMessage($"Product '{dto.Name}' created successfully.");
+                return Ok("Product created.");
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Error creating product '{dto?.Name}': {ex.Message}\n{ex.StackTrace}");
+
+                return InternalServerError();
+            }
         }
 
         [HttpPut]
         [Route("{id:int}")]
         public IHttpActionResult Update(int id, ProductDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
-            // Validate incoming data
-            if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
-                return BadRequest("Product name is required.");
+                // Validate incoming data
+                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
+                    return BadRequest("Product name is required.");
 
-            dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
+                dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
 
-            var existing = _service.Get(id);
-            if (existing == null)
-                return NotFound();
+                var existing = _service.Get(id);
+                if (existing == null)
+                    return NotFound();
 
-            CommonUtils.CommonUtils.LogMessage($"Updating product id={id}: New Name='{dto.Name}', Price={dto.Price}");
+                CommonUtils.CommonUtils.LogMessage($"Updating product id={id}: New Name='{dto.Name}', Price={dto.Price}");
 
-            _service.Update(id, dto);
-            CommonUtils.CommonUtils.LogMessage($"Product id={id} updated successfully.");
+                _service.Update(id, dto);
 
-            return Ok("Product updated.");
+                CommonUtils.CommonUtils.LogMessage($"Product id={id} updated successfully.");
+
+                return Ok("Product updated.");
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Error updating product id={id}: {ex.Message}\n{ex.StackTrace}");
+                return InternalServerError();
+            }
         }
 
         [HttpDelete]
         [Route("{id:int}")]
         public IHttpActionResult Delete(int id)
         {
-            var existing = _service.Get(id);
-            if (existing == null)
-                return NotFound();
+            try
+            {
+                var existing = _service.Get(id);
+                if (existing == null)
+                    return NotFound();
 
-            _service.Delete(id);
-            return Ok("Product deleted.");
+                _service.Delete(id);
+                return Ok("Product deleted.");
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Error deleting product id={id}: {ex.Message}\n{ex.StackTrace}");
+                return InternalServerError();
+            }
         }
     }
 }
