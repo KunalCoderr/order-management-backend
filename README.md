@@ -30,11 +30,17 @@ Backend Setup (.NET)
  - Open Command Prompt and run the following commands:
 
 docker run -d --name "cache" -p 5000:6379 redis
+
 docker ps
+
 docker exec -it cache sh
+
 redis-cli
+
 select 0
+
 ping
+
 GET product_list
 
 
