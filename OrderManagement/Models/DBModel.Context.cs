@@ -15,13 +15,13 @@ namespace OrderManagement.Models
     
     public partial class OrderManagementEntities : DbContext
     {
-        public OrderManagementEntities()
-            : base("name=OrderManagementEntities")
+        public OrderManagementEntities(string connectionString)
+            : base(connectionString)
         {
             this.Configuration.ProxyCreationEnabled = false;
             this.Configuration.LazyLoadingEnabled = false;
         }
-    
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             throw new UnintentionalCodeFirstException();

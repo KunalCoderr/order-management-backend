@@ -8,9 +8,9 @@ namespace OrderManagement.Repositories
 {
     public class OrderRepository : IOrderRepository
     {
-        private readonly OrderManagementEntities _context;
+        private readonly OrderManagementContext _context;
 
-        public OrderRepository(OrderManagementEntities context)
+        public OrderRepository(OrderManagementContext context)
         {
             _context = context;
         }

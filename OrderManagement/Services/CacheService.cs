@@ -11,7 +11,8 @@ namespace OrderManagement.Services
         private static readonly Lazy<ConnectionMultiplexer> lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
         {
             // TODO: Replace with your Redis connection string
-            string redisConnection = ConfigurationManager.AppSettings["RedisConnection"];
+            //string redisConnection = ConfigurationManager.AppSettings["RedisConnection"];
+            string redisConnection = "http://localhost:5000/";
             try
             {
                 return ConnectionMultiplexer.Connect(redisConnection);// ("localhost:5000");
