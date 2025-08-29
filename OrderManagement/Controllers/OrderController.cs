@@ -12,7 +12,7 @@ namespace OrderManagement.Controllers
 {
     [AuthorizeSession]
     [RoutePrefix("api/order")]
-    public class OrderController : ApiController
+    public class OrderController : BaseApiController
     {
         private readonly IOrderService _orderService;
 
@@ -30,21 +30,22 @@ namespace OrderManagement.Controllers
             try
             {
                 if (request == null)
-                    return BadRequest("Order request cannot be null.");
+                    return Fail<object>("Order request is missing.");
 
                 if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+                    return Fail<object>("Invalid order data.");
 
                 _orderService.PlaceOrder(request);
 
                 CommonUtils.CommonUtils.LogMessage($"Order placed successfully for customer: {request.UserId}");
 
-                return Ok(new { message = "Order placed successfully." });
+                return Success<object>(null, "Order placed successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Error placing order for customer {request?.UserId}: {ex.Message}\n{ex.StackTrace}");
-                return InternalServerError();
+
+                return InternalError<object>("An unexpected error occurred during order placement.");
             }
         }
 
@@ -55,19 +56,20 @@ namespace OrderManagement.Controllers
             try
             {
                 if (userId <= 0)
-                    return BadRequest("Invalid user ID.");
+                    return Fail<object>("Invalid user ID.");
 
                 var history = _orderService.GetOrderHistory(userId);
 
                 if (history == null || !history.Any())
-                    return NotFound();
+                    return Fail<object>("Invalid user ID.");
 
-                return Ok(history);
+                return Success(history, "Order history retrieved successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Error retrieving order history for userId={userId}: {ex.Message}\n{ex.StackTrace}");
-                return InternalServerError();
+
+                return InternalError<object>("An unexpected error occurred while retrieving order history.");
             }
         }
     }

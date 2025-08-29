@@ -11,7 +11,7 @@ namespace OrderManagement.Controllers
 {
     [AuthorizeSession]
     [RoutePrefix("api/product")]
-    public class ProductController : ApiController
+    public class ProductController : BaseApiController
     {
         private readonly IProductService _service;
 
@@ -29,13 +29,14 @@ namespace OrderManagement.Controllers
             try
             {
                 var products = _service.GetAll();
-                return Ok(products);
+
+                return Success(products, "Products retrieved successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Unexpected error in GetAll Products: {ex.Message}\n{ex.StackTrace}");
 
-                return InternalServerError();
+                return InternalError<object>("An unexpected error occurred while retrieving products.");
             }
         }
 
@@ -48,15 +49,15 @@ namespace OrderManagement.Controllers
                 var product = _service.Get(id);
 
                 if (product == null)
-                    return NotFound();
+                    return Fail<object>("Product not found.");
 
-                return Ok(product);
+                return Success(product, "Product retrieved successfully.");
             }
             catch (Exception ex)
             {
-                CommonUtils.CommonUtils.LogMessage($"Unexpected error in product by Id Get({id} : {ex.Message}\n{ex.StackTrace}");
+                CommonUtils.CommonUtils.LogMessage($"Unexpected error in Get product by Id {id} : {ex.Message}\n{ex.StackTrace}");
 
-                return InternalServerError();
+                return InternalError<object>("An unexpected error occurred while retrieving the product.");
             }
         }
 
@@ -67,10 +68,10 @@ namespace OrderManagement.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+                    return Fail<object>("Invalid product data.");
 
-                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
-                    return BadRequest("Product name is required.");
+                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name) || !CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Price.ToString()))
+                    return Fail<object>("Product name and valid price are required.");
 
                 // Format product name to Title Case using CommonUtils
                 dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
@@ -80,13 +81,13 @@ namespace OrderManagement.Controllers
                 _service.Create(dto);
 
                 CommonUtils.CommonUtils.LogMessage($"Product '{dto.Name}' created successfully.");
-                return Ok("Product created.");
+                return Success("", "Product created successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Error creating product '{dto?.Name}': {ex.Message}\n{ex.StackTrace}");
 
-                return InternalServerError();
+                return InternalError<object>("An unexpected error occurred while creating the product.");
             }
         }
 
@@ -97,11 +98,10 @@ namespace OrderManagement.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+                    return Fail<object>("Invalid product data.");
 
-                // Validate incoming data
-                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name))
-                    return BadRequest("Product name is required.");
+                if (!CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Name) || !CommonUtils.CommonUtils.IsNotNullOrEmpty(dto.Price.ToString()))
+                    return Fail<object>("Product name and valid price are required.");
 
                 dto.Name = CommonUtils.CommonUtils.ToTitleCase(dto.Name);
 
@@ -115,12 +115,13 @@ namespace OrderManagement.Controllers
 
                 CommonUtils.CommonUtils.LogMessage($"Product id={id} updated successfully.");
 
-                return Ok("Product updated.");
+                return Success<object>(null, "Product updated successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Error updating product id={id}: {ex.Message}\n{ex.StackTrace}");
-                return InternalServerError();
+
+                return InternalError<object>("An unexpected error occurred while updating the product.");
             }
         }
 
@@ -132,15 +133,16 @@ namespace OrderManagement.Controllers
             {
                 var existing = _service.Get(id);
                 if (existing == null)
-                    return NotFound();
+                    return Fail<object>("Product not found.");
 
                 _service.Delete(id);
-                return Ok("Product deleted.");
+                return Success<object>(null, "Product deleted successfully.");
             }
             catch (Exception ex)
             {
                 CommonUtils.CommonUtils.LogMessage($"Error deleting product id={id}: {ex.Message}\n{ex.StackTrace}");
-                return InternalServerError();
+
+                return InternalError<object>("An unexpected error occurred while deleting the product.");
             }
         }
     }
