@@ -22,8 +22,17 @@ Public Module CommonUtils
     ' Logs a message to a text file with timestamp
     Public Sub LogMessage(message As String, Optional logFilePath As String = "application.log")
         Try
+            Dim logFolderPath As String = "C:\logs"
+
+            ' Ensure the Logs folder exists; create if not
+            If Not Directory.Exists(logFolderPath) Then
+                Directory.CreateDirectory(logFolderPath)
+            End If
+
+            Dim filePath As String = Path.Combine(logFolderPath, logFilePath)
             Dim logEntry As String = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}"
-            File.AppendAllText(logFilePath, logEntry & Environment.NewLine)
+
+            File.AppendAllText(filePath, logEntry & Environment.NewLine)
         Catch ex As Exception
             ' Fail silently or handle logging error if needed
         End Try

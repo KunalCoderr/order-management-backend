@@ -7,6 +7,7 @@ namespace OrderManagement.DTOsModels
 {
     public class OrderHistory
     {
+        public int UserId { get; set; }
         public int OrderId { get; set; }
         public DateTime OrderDate { get; set; }
         public string UserName { get; set; }

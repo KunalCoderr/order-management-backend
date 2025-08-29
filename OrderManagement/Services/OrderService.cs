@@ -5,7 +5,6 @@ using OrderManagement.Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 
 namespace OrderManagement.Services
 {
@@ -25,32 +24,54 @@ namespace OrderManagement.Services
 
         public void PlaceOrder(PlaceOrderRequest request)
         {
-            foreach (var item in request.Items)
+            try
             {
-                var order = new Order
+                foreach (var item in request.Items)
                 {
-                    UserId = request.UserId,
-                    OrderDate = DateTime.Now,
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity
-                };
+                    var order = new Order
+                    {
+                        UserId = request.UserId,
+                        OrderDate = DateTime.Now,
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity
+                    };
 
-                _orderRepository.AddOrder(order);
+                    _orderRepository.AddOrder(order);
+                }
+
+                _cacheService.Remove(ProductListCacheKey);
             }
-
-            _cacheService.Remove(ProductListCacheKey);
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage(
+                    $"Error placing order for user {request.UserId}: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
 
         public List<OrderHistory> GetOrderHistory(int userId)
         {
-            var cachedOrders = _cacheService.Get<List<OrderHistory>>(ProductListCacheKey);
-            if (cachedOrders != null)
-                return cachedOrders;
+            try
+            {
+                var cachedOrders = _cacheService.Get<List<OrderHistory>>(ProductListCacheKey);
+                if (cachedOrders != null && cachedOrders.Count > 0)
+                {
+                    cachedOrders = cachedOrders.FindAll(x => x.UserId == userId).ToList();
+                    _cacheService.Set(ProductListCacheKey, cachedOrders, CacheExpiry);
+                    return cachedOrders;
+                }
 
-            var orders = _orderRepository.GetOrdersByUser(userId);
-            _cacheService.Set(ProductListCacheKey, orders, CacheExpiry);
+                var orders = _orderRepository.GetOrdersByUser(userId);
+                _cacheService.Set(ProductListCacheKey, orders, CacheExpiry);
 
-            return orders;
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage(
+                    $"Error retrieving order history for user {userId}: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
     }
 }

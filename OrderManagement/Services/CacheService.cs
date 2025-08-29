@@ -2,9 +2,6 @@
 using OrderManagement.Services.Contracts;
 using StackExchange.Redis;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 using System.Configuration;
 
 namespace OrderManagement.Services
@@ -15,7 +12,16 @@ namespace OrderManagement.Services
         {
             // TODO: Replace with your Redis connection string
             string redisConnection = ConfigurationManager.AppSettings["RedisConnection"];
-            return ConnectionMultiplexer.Connect(redisConnection);// ("localhost:5000");
+            try
+            {
+                return ConnectionMultiplexer.Connect(redisConnection);// ("localhost:5000");
+            }
+            catch (RedisConnectionException ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Redis connection failed: {ex.Message}");
+
+                throw;
+            }
         });
 
         private static ConnectionMultiplexer Connection => lazyConnection.Value;
@@ -24,26 +30,49 @@ namespace OrderManagement.Services
 
         public void Set<T>(string key, T value, TimeSpan expiry)
         {
-            var settings = new JsonSerializerSettings
+            try
             {
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-            };
+                var settings = new JsonSerializerSettings
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                };
 
-            var json = JsonConvert.SerializeObject(value, settings);
-            Cache.StringSet(key, json, expiry);
+                var json = JsonConvert.SerializeObject(value, settings);
+                Cache.StringSet(key, json, expiry);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Cache Set error for key when set '{key}': {ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         public T Get<T>(string key)
         {
-            var value = Cache.StringGet(key);
-            if (!value.HasValue)
+            try
+            {
+                var value = Cache.StringGet(key);
+                if (!value.HasValue)
+                    return default(T);
+
+                return JsonConvert.DeserializeObject<T>(value);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Cache Get error for key when get '{key}': {ex.Message}\n{ex.StackTrace}");
                 return default(T);
-            return JsonConvert.DeserializeObject<T>(value);
+            }
         }
 
         public void Remove(string key)
         {
-            Cache.KeyDelete(key);
+            try
+            {
+                Cache.KeyDelete(key);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Cache Remove error for key '{key}': {ex.Message}\n{ex.StackTrace}");
+            }
         }
     }
 }

@@ -1,10 +1,8 @@
 ﻿using OrderManagement.DTOsModels;
 using OrderManagement.Models;
 using OrderManagement.Repositories.Contracts;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 
 namespace OrderManagement.Repositories
 {
@@ -31,6 +29,7 @@ namespace OrderManagement.Repositories
                         where order.UserId == userId
                         select new OrderHistory
                         {
+                            UserId = user.Id,
                             OrderId = order.Id,
                             OrderDate = order.OrderDate,
                             UserName = user.Username,
