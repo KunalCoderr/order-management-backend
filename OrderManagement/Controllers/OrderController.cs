@@ -1,7 +1,4 @@
 ﻿using OrderManagement.DTOsModels;
-using OrderManagement.Models;
-using OrderManagement.Repositories;
-using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
 using System.Linq;
@@ -10,9 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/order")]
-    [Authorize]
     public class OrderController : BaseApiController
     {
         private readonly IOrderService _orderService;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services;
 using OrderManagement.Services.Contracts;
+using OrderManagement.Utilities;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +30,9 @@ builder.Services.AddDbContext<OrderManagementContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrderManagementDb"));
 });
+
+builder.Services.AddAuthentication("CustomToken")
+    .AddScheme<AuthenticationSchemeOptions, TokenAuthenticationHandler>("CustomToken", null);
 
 
 // Repositories
@@ -54,7 +59,14 @@ builder.Services.AddCors(options =>
 });
 
 // Add controllers and Swagger
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Disable camelCase
+    });
+
+
+//builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
@@ -75,6 +87,9 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseCors("AllowAll");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Use session middleware (this must come after UseRouting and before MapControllers)
 app.UseSession();

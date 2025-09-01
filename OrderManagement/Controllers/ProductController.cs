@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/product")]
-    [Authorize]
     public class ProductController : BaseApiController
     {
         private readonly IProductService _service;
