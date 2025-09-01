@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using OrderManagement.Services.Contracts;
 using StackExchange.Redis;
 using System;
@@ -8,21 +9,28 @@ namespace OrderManagement.Services
 {
     public class CacheService : ICacheService
     {
-        private static readonly Lazy<ConnectionMultiplexer> lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
-        {
-            // TODO: Replace with your Redis connection string
-            string redisConnection = ConfigurationManager.AppSettings["RedisConnection"];
-            try
-            {
-                return ConnectionMultiplexer.Connect(redisConnection);// ("localhost:5000");
-            }
-            catch (RedisConnectionException ex)
-            {
-                CommonUtils.CommonUtils.LogMessage($"Redis connection failed: {ex.Message}");
+        private static Lazy<ConnectionMultiplexer> lazyConnection;
 
-                throw;
-            }
-        });
+        public CacheService(IConfiguration configuration)
+        {
+            var redisConnection = configuration.GetConnectionString("RedisConnection");
+
+            lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
+            {
+                var configOptions = ConfigurationOptions.Parse(redisConnection);
+                configOptions.AbortOnConnectFail = false;
+
+                try
+                {
+                    return ConnectionMultiplexer.Connect(configOptions);
+                }
+                catch (RedisConnectionException ex)
+                {
+                    CommonUtils.CommonUtils.LogMessage($"Redis connection failed: {ex.Message}");
+                    throw;
+                }
+            });
+        }
 
         private static ConnectionMultiplexer Connection => lazyConnection.Value;
 

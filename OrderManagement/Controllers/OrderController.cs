@@ -1,31 +1,26 @@
 ﻿using OrderManagement.DTOsModels;
-using OrderManagement.Filters;
-using OrderManagement.Models;
-using OrderManagement.Repositories;
-using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
 using System.Linq;
-using System.Web.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
-    [AuthorizeSession]
-    [RoutePrefix("api/order")]
+    [Authorize]
+    [ApiController]
+    [Route("api/order")]
     public class OrderController : BaseApiController
     {
         private readonly IOrderService _orderService;
 
         public OrderController(IOrderService orderService)
         {
-            var dbContext = new OrderManagementEntities();
-            IOrderRepository orderRepository = new OrderRepository(dbContext);
             _orderService = orderService;
         }
 
-        [HttpPost()]
-        [Route("place")]
-        public IHttpActionResult PlaceOrder([FromBody] PlaceOrderRequest request)
+        [HttpPost("place")]
+        public IActionResult PlaceOrder([FromBody] PlaceOrderRequest request)
         {
             try
             {
@@ -49,9 +44,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpGet()]
-        [Route("history/{userId}")]
-        public IHttpActionResult GetOrderHistory(int userId)
+        [HttpGet("history/{userId}")]
+        public IActionResult GetOrderHistory(int userId)
         {
             try
             {

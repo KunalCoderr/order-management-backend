@@ -4,25 +4,23 @@ using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
-using System.Web.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OrderManagement.Controllers
 {
-    [RoutePrefix("api/user")]
+    [ApiController]
+    [Route("api/user")]
     public class UserController : BaseApiController
     {
         private readonly IUserService _userService;
 
         public UserController(IUserService userService)
         {
-            var dbContext = new OrderManagementEntities();
-            IUserRepository userRepository = new UserRepository(dbContext);
             _userService = userService;
         }
 
-        [HttpPost]
-        [Route("register")]
-        public IHttpActionResult Register(UserDTO dto)
+        [HttpPost("register")]
+        public IActionResult Register(UserDTO dto)
         {
             try
             {
@@ -52,9 +50,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpPost]
-        [Route("login")]
-        public IHttpActionResult Login(UserDTO dto)
+        [HttpPost("login")]
+        public IActionResult Login(UserDTO dto)
         {
             try
             {
@@ -83,9 +80,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("session")]
-        public IHttpActionResult GetSessionInfo([FromUri] string token)
+        [HttpGet("session")]
+        public IActionResult GetSessionInfo([FromQuery] string token)
         {
             try
             {

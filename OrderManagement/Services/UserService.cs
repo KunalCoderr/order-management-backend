@@ -12,7 +12,6 @@ namespace OrderManagement.Services
     {
         private readonly IUserRepository _userRepo;
 
-        //private static Dictionary<string, (string Username, DateTime Expiry)> _sessionStore = new Dictionary<string, (string Username, DateTime Expiry)>();
         private static ConcurrentDictionary<string, (int id, string Username, DateTime Expiry)> _sessionStore
             = new ConcurrentDictionary<string, (int id, string Username, DateTime Expiry)>();
 

@@ -4,35 +4,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Web.Http;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace OrderManagement.Controllers
 {
-    public class BaseApiController : ApiController
+    public class BaseApiController : ControllerBase
     {
-        protected IHttpActionResult Success<T>(T data, string message = null)
+        protected IActionResult Success<T>(T data, string message = null)
         {
             var response = ApiResponse<T>.Ok(data, message);
             return Ok(response);
         }
 
-        protected IHttpActionResult Fail<T>(string message)
+        protected IActionResult Fail<T>(string message)
         {
             var response = ApiResponse<T>.Fail(message);
-            return Content(HttpStatusCode.BadRequest, response);
+            return BadRequest(response);
         }
 
-        protected IHttpActionResult InternalError<T>(string message)
+        protected IActionResult InternalError<T>(string message)
         {
             var response = ApiResponse<T>.Fail(message);
-            return Content(HttpStatusCode.InternalServerError, response);
+            return StatusCode(500, response);
         }
 
-        protected IHttpActionResult Unauthorized<T>(string message)
+        protected IActionResult Unauthorized<T>(string message)
         {
             var response = ApiResponse<T>.Fail(message);
-            return Content(HttpStatusCode.Unauthorized, response);
+            return Unauthorized(response);
+        }
+
+        protected IActionResult NotFound<T>(string message)
+        {
+            var response = ApiResponse<T>.Fail(message);
+            return NotFound(response);
         }
 
     }

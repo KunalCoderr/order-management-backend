@@ -1,30 +1,28 @@
 ﻿using OrderManagement.DTOsModels;
-using OrderManagement.Filters;
 using OrderManagement.Models;
 using OrderManagement.Repositories;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
-using System.Web.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace OrderManagement.Controllers
 {
-    [AuthorizeSession]
-    [RoutePrefix("api/product")]
+    [Authorize]
+    [ApiController]
+    [Route("api/product")]
     public class ProductController : BaseApiController
     {
         private readonly IProductService _service;
 
         public ProductController(IProductService service)
         {
-            var dbContext = new OrderManagementEntities();
-            IProductRepository productRepository = new ProductRepository(dbContext);
             _service = service;
         }
 
-        [HttpGet]
-        [Route("")]
-        public IHttpActionResult GetAll()
+        [HttpGet("")]
+        public IActionResult GetAll()
         {
             try
             {
@@ -40,9 +38,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("{id:int}")]
-        public IHttpActionResult Get(int id)
+        [HttpGet("{id:int}")]
+        public IActionResult Get(int id)
         {
             try
             {
@@ -61,9 +58,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpPost]
-        [Route("")]
-        public IHttpActionResult Create(ProductDTO dto)
+        [HttpPost("")]
+        public IActionResult Create(ProductDTO dto)
         {
             try
             {
@@ -91,9 +87,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpPut]
-        [Route("{id:int}")]
-        public IHttpActionResult Update(int id, ProductDTO dto)
+        [HttpPut("{id:int}")]
+        public IActionResult Update(int id, ProductDTO dto)
         {
             try
             {
@@ -125,9 +120,8 @@ namespace OrderManagement.Controllers
             }
         }
 
-        [HttpDelete]
-        [Route("{id:int}")]
-        public IHttpActionResult Delete(int id)
+        [HttpDelete("{id:int}")]
+        public IActionResult Delete(int id)
         {
             try
             {
