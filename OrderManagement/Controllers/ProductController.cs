@@ -1,7 +1,4 @@
 ﻿using OrderManagement.DTOsModels;
-using OrderManagement.Models;
-using OrderManagement.Repositories;
-using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
 using Microsoft.AspNetCore.Mvc;
