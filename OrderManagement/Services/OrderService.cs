@@ -1,10 +1,15 @@
-﻿using OrderManagement.DTOsModels;
+﻿using CsvHelper;
+using Microsoft.AspNetCore.Http;
+using OrderManagement.DTOsModels;
 using OrderManagement.Models;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Services
 {
@@ -12,14 +17,16 @@ namespace OrderManagement.Services
     {
         private readonly IOrderRepository _orderRepository;
         private readonly ICacheService _cacheService;
+        private readonly IProductService _productService;
 
         private const string ProductListCacheKey = "order_list";
         private readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(10);
 
-        public OrderService(IOrderRepository orderRepository, ICacheService cacheService)
+        public OrderService(IOrderRepository orderRepository, ICacheService cacheService, IProductService productService)
         {
             _orderRepository = orderRepository;
             _cacheService = cacheService;
+            _productService = productService;
         }
 
         public void PlaceOrder(PlaceOrderRequest request)
@@ -71,6 +78,84 @@ namespace OrderManagement.Services
                 CommonUtils.CommonUtils.LogMessage(
                     $"Error retrieving order history for user {userId}: {ex.Message}\n{ex.StackTrace}");
                 throw;
+            }
+        }
+
+        public async Task<UploadOrderResult> ProcessCsvAsync(IFormFile file)
+        {
+            var result = new UploadOrderResult();
+
+            using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+
+            var records = new List<Order>();
+            int line = 1;
+
+            try
+            {
+                var parsed = csv.GetRecords<dynamic>();
+
+                var products = _productService.GetAll();
+
+                foreach (var row in parsed)
+                {
+                    try
+                    {
+                        string ProductId = row.ProductId;
+                        string UserId = row.UserId;
+                        string Quantity = row.Quantity;
+                        string dateTime = row.OrderDate;
+
+                        if (string.IsNullOrWhiteSpace(ProductId) ||
+                            string.IsNullOrWhiteSpace(UserId) ||
+                            string.IsNullOrWhiteSpace(Quantity) ||
+                            string.IsNullOrWhiteSpace(dateTime))
+                        {
+                            result.FailureCount++;
+                            result.Errors.Add(new UploadError { Line = line, Reason = "Missing required fields." });
+                            line++;
+                            continue;
+                        }
+
+                        var product = products.FirstOrDefault(p => p.Id == int.Parse(ProductId));
+                        if (product == null)
+                        {
+                            result.FailureCount++;
+                            result.Errors.Add(new UploadError { Line = line, Reason = "Product does not exist: " + ProductId + "." });
+                            line++;
+                            continue;
+                        }
+
+                        records.Add(new Order
+                        {
+                            ProductId = int.Parse(ProductId),
+                            UserId = int.Parse(UserId),
+                            Quantity = int.Parse(Quantity),
+                            OrderDate = DateTime.Parse(dateTime),
+                        });
+
+                        result.SuccessCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.FailureCount++;
+                        result.Errors.Add(new UploadError { Line = line, Reason = ex.Message });
+                    }
+
+                    line++;
+                }
+
+                if (records.Any())
+                {
+                    await _orderRepository.AddOrdersAsync(records);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("CSV parsing failed: " + ex.Message);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using OrderManagement.DTOsModels;
 using OrderManagement.Models;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Repositories.Contracts
 {
@@ -8,5 +9,6 @@ namespace OrderManagement.Repositories.Contracts
     {
         void AddOrder(Order order);
         List<OrderHistory> GetOrdersByUser(int userId);
+        Task AddOrdersAsync(List<Order> orders);
     }
 }

@@ -3,6 +3,7 @@ using OrderManagement.Models;
 using OrderManagement.Repositories.Contracts;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Repositories
 {
@@ -40,6 +41,12 @@ namespace OrderManagement.Repositories
                         };
 
             return query.ToList();
+        }
+
+        public async Task AddOrdersAsync(List<Order> orders)
+        {
+            _context.Orders.AddRange(orders);
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using OrderManagement.DTOsModels;
+﻿using Microsoft.AspNetCore.Http;
+using OrderManagement.DTOsModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace OrderManagement.Services.Contracts
     {
         void PlaceOrder(PlaceOrderRequest request);
         List<OrderHistory> GetOrderHistory(int userId);
+        Task<UploadOrderResult> ProcessCsvAsync(IFormFile file);
     }
 
 }

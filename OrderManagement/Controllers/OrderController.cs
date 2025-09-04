@@ -1,9 +1,13 @@
-﻿using OrderManagement.DTOsModels;
+﻿using Azure.Core;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using OrderManagement.DTOsModels;
+using OrderManagement.Models;
 using OrderManagement.Services.Contracts;
 using System;
 using System.Linq;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
 
 namespace OrderManagement.Controllers
 {
@@ -64,6 +68,29 @@ namespace OrderManagement.Controllers
                 CommonUtils.CommonUtils.LogMessage($"Error retrieving order history for userId={userId}: {ex.Message}\n{ex.StackTrace}");
 
                 return InternalError<object>("An unexpected error occurred while retrieving order history.");
+            }
+        }
+
+        [HttpPost("importorders")]
+        public async Task<IActionResult> UploadOrders(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return Fail<object>("CSV file is required.");
+
+            try
+            {
+                CommonUtils.CommonUtils.LogMessage("Starting CSV order import...");
+
+                UploadOrderResult result = await _orderService.ProcessCsvAsync(file);
+
+                CommonUtils.CommonUtils.LogMessage("CSV order import completed successfully.");
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                CommonUtils.CommonUtils.LogMessage($"Error importing orders from CSV: {ex.Message}\n{ex.StackTrace}");
+                return InternalError<object>("An unexpected error occurred while importing orders.");
             }
         }
     }
