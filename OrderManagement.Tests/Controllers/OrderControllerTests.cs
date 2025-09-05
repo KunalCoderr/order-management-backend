@@ -1,9 +1,11 @@
 ﻿using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using OrderManagement.Controllers;
 using OrderManagement.DTOsModels;
 using OrderManagement.Services.Contracts;
+using System.Text;
 
 namespace OrderManagement.Tests.Controllers
 {
@@ -197,6 +199,76 @@ namespace OrderManagement.Tests.Controllers
 
             var objectResult = Assert.IsType<ObjectResult>(result);
             objectResult.StatusCode.Should().Be(500);
+        }
+
+        [Fact]
+        public async Task UploadOrders_NullFile_ReturnsFail()
+        {
+            // Act
+            var result = await _controller.UploadOrders(null);
+
+            // Assert
+            var objectResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(400, objectResult.StatusCode);
+            Assert.Equal("CSV file is required.", ((dynamic)objectResult.Value).Message);
+        }
+
+        [Fact]
+        public async Task UploadOrders_EmptyFile_ReturnsFail()
+        {
+            // Arrange
+            var mockFile = new Mock<IFormFile>();
+            mockFile.Setup(f => f.Length).Returns(0);
+
+            // Act
+            var result = await _controller.UploadOrders(mockFile.Object);
+
+            // Assert
+            var objectResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(400, objectResult.StatusCode);
+            Assert.Equal("CSV file is required.", ((dynamic)objectResult.Value).Message);
+        }
+
+        [Fact]
+        public async Task UploadOrders_ValidFile_ReturnsOkResult()
+        {
+            // Arrange
+            var fileContent = "orderId,product,quantity\n1,Widget,5";
+            var fileName = "orders.csv";
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes(fileContent));
+            var mockFile = new FormFile(ms, 0, ms.Length, "file", fileName);
+
+            var expectedResult = new UploadOrderResult { SuccessCount = 0 };
+            _mockOrderService.Setup(s => s.ProcessCsvAsync(It.IsAny<IFormFile>()))
+                             .ReturnsAsync(expectedResult);
+
+            // Act
+            var result = await _controller.UploadOrders(mockFile);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, okResult.StatusCode);
+            Assert.Equal(expectedResult, okResult.Value);
+        }
+
+        [Fact]
+        public async Task UploadOrders_ServiceThrowsException_ReturnsInternalError()
+        {
+            // Arrange
+            var fileContent = "orderId,product,quantity\n1,Widget,5";
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes(fileContent));
+            var mockFile = new FormFile(ms, 0, ms.Length, "file", "orders.csv");
+
+            _mockOrderService.Setup(s => s.ProcessCsvAsync(It.IsAny<IFormFile>()))
+                             .ThrowsAsync(new Exception("Something went wrong"));
+
+            // Act
+            var result = await _controller.UploadOrders(mockFile);
+
+            // Assert
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, objectResult.StatusCode);
+            Assert.Equal("An unexpected error occurred while importing orders.", ((dynamic)objectResult.Value).Message);
         }
     }
 }
