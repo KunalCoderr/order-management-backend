@@ -1,10 +1,12 @@
 ﻿using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using OrderManagement.DTOsModels;
 using OrderManagement.Models;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services;
 using OrderManagement.Services.Contracts;
+using System.Text;
 
 namespace OrderManagement.Tests.Services
 {
@@ -12,13 +14,15 @@ namespace OrderManagement.Tests.Services
     {
         private readonly Mock<IOrderRepository> _mockOrderRepo;
         private readonly Mock<ICacheService> _mockCache;
+        private readonly Mock<IProductService> _productService;
         private readonly OrderService _service;
 
         public OrderServiceTests()
         { 
             _mockOrderRepo = new Mock<IOrderRepository>();
             _mockCache = new Mock<ICacheService>();
-            _service = new OrderService(_mockOrderRepo.Object, _mockCache.Object);
+            _productService = new Mock<IProductService>();
+            _service = new OrderService(_mockOrderRepo.Object, _mockCache.Object, _productService.Object);
         }
  
         [Fact]
@@ -136,6 +140,150 @@ namespace OrderManagement.Tests.Services
 
             // Assert
             act.Should().Throw<Exception>().WithMessage("Cache failure");
+        }
+
+        private IFormFile CreateCsvFile(string csvContent)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(csvContent));
+            return new FormFile(stream, 0, stream.Length, "file", "orders.csv");
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_AllValidRows_ReturnsSuccess()
+        {
+            // Arrange
+            string csv = "ProductId,UserId,Quantity,OrderDate\n1,1001,2,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(1, result.SuccessCount);
+            Assert.Equal(0, result.FailureCount);
+            Assert.Empty(result.Errors);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_MissingFields_ReturnsFailure()
+        {
+            // Arrange: Missing UserId
+            string csv = "ProductId,UserId,Quantity,OrderDate\n1,,2,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.FailureCount);
+            Assert.Single(result.Errors);
+            Assert.Contains("Missing required fields", result.Errors[0].Reason);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_InvalidProduct_ReturnsFailure()
+        {
+            // Arrange: ProductId = 999 does not exist
+            string csv = "ProductId,UserId,Quantity,OrderDate\n999,1001,2,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.FailureCount);
+            Assert.Single(result.Errors);
+            Assert.Contains("Product does not exist", result.Errors[0].Reason);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_InvalidDataType_ReturnsFailure()
+        {
+            // Arrange: Quantity is not a number
+            string csv = "ProductId,UserId,Quantity,OrderDate\n1,1001,abc,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Debug
+            Console.WriteLine($"Actual error: {result.Errors[0].Reason}");
+
+            // Assert
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.FailureCount);
+            Assert.Single(result.Errors);
+            Assert.Contains("not in a correct format", result.Errors[0].Reason);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_NoHeaders_ThrowsException()
+        {
+            // Arrange: No header row
+            string csv = "1,1001,2,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(0, result.FailureCount);
+            Assert.Empty(result.Errors);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_MixedValidAndInvalidRows_ReturnsPartialSuccess()
+        {
+            // Arrange: One valid, one missing field
+            string csv = "ProductId,UserId,Quantity,OrderDate\n1,1001,2,2023-01-01\n1,,5,2023-01-01";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll())
+                .Returns(new List<Product> { new Product { Id = 1 } });
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(1, result.SuccessCount);
+            Assert.Equal(1, result.FailureCount);
+            Assert.Single(result.Errors);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.Is<List<Order>>(l => l.Count == 1)), Times.Once);
+        }
+
+        [Fact]
+        public async Task ProcessCsvAsync_EmptyFile_ReturnsEmptyResult()
+        {
+            // Arrange
+            string csv = "";
+            var file = CreateCsvFile(csv);
+            _productService.Setup(p => p.GetAll()).Returns(new List<Product>());
+
+            // Act
+            var result = await _service.ProcessCsvAsync(file);
+
+            // Assert
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(0, result.FailureCount);
+            Assert.Empty(result.Errors);
+            _mockOrderRepo.Verify(r => r.AddOrdersAsync(It.IsAny<List<Order>>()), Times.Never);
         }
     }
 }
