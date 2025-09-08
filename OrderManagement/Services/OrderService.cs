@@ -168,6 +168,15 @@ namespace OrderManagement.Services
 
                 return result;
             }
+            catch (HeaderValidationException ex)
+            {
+                result.Errors.Add(new UploadError
+                {
+                    Line = 1,
+                    Reason = "CSV header validation failed: " + ex.Message
+                });
+                return result;
+            }
             catch (Exception ex)
             {
                 throw new Exception("CSV parsing failed.", ex);

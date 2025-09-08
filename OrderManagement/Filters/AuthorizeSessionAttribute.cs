@@ -1,11 +1,4 @@
-﻿using OrderManagement.Repositories.Contracts;
-using OrderManagement.Services.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Web;
+﻿using OrderManagement.Services.Contracts;
 
 namespace OrderManagement.Filters
 {
