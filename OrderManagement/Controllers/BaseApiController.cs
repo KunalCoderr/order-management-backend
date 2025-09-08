@@ -33,12 +33,5 @@ namespace OrderManagement.Controllers
             var response = ApiResponse<T>.Fail(message);
             return Unauthorized(response);
         }
-
-        protected IActionResult NotFound<T>(string message)
-        {
-            var response = ApiResponse<T>.Fail(message);
-            return NotFound(response);
-        }
-
     }
 }

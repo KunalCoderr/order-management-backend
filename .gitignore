@@ -41,3 +41,7 @@ TestResults/
 # NUNIT
 *.V*
 /CommonUtils/obj/
+/CommonUtils.Tests/coverage-report
+/.vs/OrderManagement/config/applicationhost.config
+/coverage-report
+/OrderManagement.Tests/coverage-report

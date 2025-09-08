@@ -41,6 +41,17 @@ namespace OrderManagement.Tests.Controllers
         }
 
         [Fact]
+        public void GetAll_ShouldReturnInternalError_WhenExceptionThrown()
+        {
+            _mockService.Setup(s => s.GetAll()).Throws(new Exception("Database error"));
+
+            var result = _controller.GetAll();
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(500);
+        }
+
+        [Fact]
         public void Get_ShouldReturnSuccess_WhenProductExists()
         {
             var product = new Product { Id = 1, Name = "Apple", Price = 10 };
@@ -62,6 +73,17 @@ namespace OrderManagement.Tests.Controllers
 
             var objectResult = Assert.IsType<BadRequestObjectResult>(result);
             objectResult.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public void Get_ShouldReturnInternalError_WhenExceptionThrown()
+        {
+            _mockService.Setup(s => s.Get(It.IsAny<int>())).Throws(new Exception("Something went wrong"));
+
+            var result = _controller.Get(1);
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(500);
         }
 
         [Fact]
@@ -104,6 +126,20 @@ namespace OrderManagement.Tests.Controllers
         }
 
         [Fact]
+        public void Create_ShouldReturnInternalError_WhenExceptionThrown()
+        {
+            var dto = new ProductDTO { Name = "Laptop", Price = 1000 };
+
+            _controller.ModelState.Clear();
+            _mockService.Setup(s => s.Create(It.IsAny<ProductDTO>())).Throws(new Exception("Unexpected error"));
+
+            var result = _controller.Create(dto);
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(500);
+        }
+
+        [Fact]
         public void Update_ShouldReturnSuccess_WhenValid()
         {
             var dto = new ProductDTO { Name = "Tablet", Price = 500 };
@@ -134,6 +170,51 @@ namespace OrderManagement.Tests.Controllers
         }
 
         [Fact]
+        public void Update_ShouldReturnInternalError_WhenExceptionThrown()
+        {
+            var dto = new ProductDTO { Name = "Phone", Price = 300 };
+            var existing = new Product { Id = 1, Name = "OldPhone", Price = 200 };
+
+            _mockService.Setup(s => s.Get(1)).Returns(existing);
+            _mockService.Setup(s => s.Update(1, dto)).Throws(new Exception("Update failed"));
+
+            _controller.ModelState.Clear();
+
+            var result = _controller.Update(1, dto);
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(500);
+        }
+
+        [Fact]
+        public void Update_ShouldReturnFail_WhenModelStateIsInvalid()
+        {
+            var dto = new ProductDTO { Name = "", Price = 0 };
+
+            _controller.ModelState.AddModelError("Name", "Required");
+
+            var result = _controller.Update(1, dto);
+
+            var objectResult = Assert.IsType<BadRequestObjectResult>(result);
+            objectResult.StatusCode.Should().Be(400);
+            objectResult.Value.Should().BeEquivalentTo(new { Message = "Invalid product data.", Success = false });
+        }
+
+        [Fact]
+        public void Update_ShouldReturnFail_WhenProductNameOrPriceInvalid()
+        {
+            var dto = new ProductDTO { Name = "", Price = 0 };
+
+            _controller.ModelState.Clear(); // ModelState is valid, but business validation should fail
+
+            var result = _controller.Update(1, dto);
+
+            var objectResult = Assert.IsType<BadRequestObjectResult>(result);
+            objectResult.StatusCode.Should().Be(400);
+            objectResult.Value.Should().BeEquivalentTo(new { Message = "Product name and valid price are required.", Success = false });
+        }
+
+        [Fact]
         public void Delete_ShouldReturnSuccess_WhenProductExists()
         {
             var existingProduct = new Product { Id = 1, Name = "Book", Price = 20 };
@@ -154,6 +235,19 @@ namespace OrderManagement.Tests.Controllers
 
             var objectResult = Assert.IsType<BadRequestObjectResult>(result);
             objectResult.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public void Delete_ShouldReturnInternalError_WhenExceptionThrown()
+        {
+            var product = new Product { Id = 1, Name = "Book", Price = 20 };
+            _mockService.Setup(s => s.Get(1)).Returns(product);
+            _mockService.Setup(s => s.Delete(1)).Throws(new Exception("Delete error"));
+
+            var result = _controller.Delete(1);
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(500);
         }
     }
 }

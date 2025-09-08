@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using OrderManagement.DTOsModels;
 using OrderManagement.Models;
@@ -54,6 +55,21 @@ namespace OrderManagement.Tests.Services
         }
 
         [Fact]
+        public void GetAll_ShouldLogAndThrow_WhenExceptionOccurs()
+        {
+            // Arrange
+            _mockCache.Setup(c => c.Get<List<Product>>(It.IsAny<string>()))
+                      .Throws(new Exception("Cache failure"));
+
+            // Act
+            Action act = () => _service.GetAll();
+
+            // Assert
+            act.Should().Throw<Exception>()
+               .WithMessage("Cache failure");
+        }
+
+        [Fact]
         public void Get_ShouldReturnProductById()
         {
             // Arrange
@@ -65,6 +81,22 @@ namespace OrderManagement.Tests.Services
 
             // Assert
             result.Should().BeEquivalentTo(product);
+        }
+
+        [Fact]
+        public void Get_ShouldLogAndThrow_WhenExceptionOccurs()
+        {
+            // Arrange
+            _mockRepo.Setup(r => r.GetById(1))
+                     .Throws(new Exception("Repo failure"));
+
+            // Act
+            Action act = () => _service.Get(1);
+
+            // Assert
+            act.Should()
+               .Throw<Exception>()
+               .WithMessage("Repo failure");
         }
 
         [Fact]
@@ -81,6 +113,21 @@ namespace OrderManagement.Tests.Services
             _mockRepo.Verify(r => r.Save(), Times.Once);
             _mockCache.Verify(c => c.Remove("product_list"), Times.Once);
         }
+
+        [Fact]
+        public void Create_ShouldLogAndThrow_WhenExceptionOccurs()
+        {
+            // Arrange
+            var dto = new ProductDTO { Name = "FailProduct", Price = 5m, Description = "Failure" };
+            _mockRepo.Setup(r => r.Add(It.IsAny<Product>())).Throws(new Exception("Add failed"));
+
+            // Act
+            Action act = () => _service.Create(dto);
+
+            // Assert
+            act.Should().Throw<Exception>().WithMessage("Add failed");
+        }
+
 
         [Fact]
         public void Update_ShouldUpdateProductAndClearCache()
@@ -129,7 +176,7 @@ namespace OrderManagement.Tests.Services
         }
 
         [Fact]
-        public void Delete_ShouldThrowKeyNotFoundException_WhenProductDoesNotExist()
+        public void Delete_ShouldThrowApplicationException_WithInnerKeyNotFoundException_WhenProductNotFound()
         {
             // Arrange
             _mockRepo.Setup(r => r.GetById(1)).Returns((Product)null);
@@ -142,6 +189,29 @@ namespace OrderManagement.Tests.Services
                .Throw<ApplicationException>()
                .WithInnerException<KeyNotFoundException>()
                .WithMessage("Product with id 1 not found.");
+        }
+
+        [Fact]
+        public void Delete_ShouldThrowInvalidOperationException_WhenDbUpdateExceptionOccurs()
+        {
+            // Arrange
+            var existing = new Product { Id = 1, Name = "ToDelete" };
+            _mockRepo.Setup(r => r.GetById(1)).Returns(existing);
+            _mockRepo.Setup(r => r.Delete(1));
+            _mockRepo.Setup(r => r.Save()).Throws(new DbUpdateException("Cannot delete due to FK constraint", new Exception("Inner FK error")));
+
+            // Act
+            Action act = () => _service.Delete(1);
+
+            // Assert
+            act.Should()
+              .Throw<ApplicationException>()
+              .WithMessage("An error occurred while deleting the product.")
+              .WithInnerException<DbUpdateException>()
+              .Which.Message.Should().Be("Cannot delete due to FK constraint");
+
+
+            _mockCache.Verify(c => c.Remove(It.IsAny<string>()), Times.Never); // Ensure cache wasn't touched
         }
 
     }

@@ -17,16 +17,16 @@ namespace OrderManagement.Services
     {
         private readonly IOrderRepository _orderRepository;
         private readonly ICacheService _cacheService;
-        private readonly IProductService _productService;
+        private readonly IProductRepository _productRepository;
 
         private const string ProductListCacheKey = "order_list";
         private readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(10);
 
-        public OrderService(IOrderRepository orderRepository, ICacheService cacheService, IProductService productService)
+        public OrderService(IOrderRepository orderRepository, ICacheService cacheService, IProductRepository productRepository)
         {
             _orderRepository = orderRepository;
             _cacheService = cacheService;
-            _productService = productService;
+            _productRepository = productRepository;
         }
 
         public void PlaceOrder(PlaceOrderRequest request)
@@ -89,53 +89,60 @@ namespace OrderManagement.Services
             using var reader = new StreamReader(stream);
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
 
-            var records = new List<Order>();
-            int line = 1;
+            int line = 2;
 
             try
             {
-                var parsed = csv.GetRecords<dynamic>();
+                var productDict = _productRepository.GetAll().ToDictionary(p => p.Id);
+                var parsed = csv.GetRecords<CsvOrderRow>();
 
-                var products = _productService.GetAll();
+                var batch = new List<Order>(1000);
+                int batchSize = 1000;
 
                 foreach (var row in parsed)
                 {
                     try
                     {
-                        string ProductId = row.ProductId;
-                        string UserId = row.UserId;
-                        string Quantity = row.Quantity;
-                        string dateTime = row.OrderDate;
-
-                        if (string.IsNullOrWhiteSpace(ProductId) ||
-                            string.IsNullOrWhiteSpace(UserId) ||
-                            string.IsNullOrWhiteSpace(Quantity) ||
-                            string.IsNullOrWhiteSpace(dateTime))
+                        if (string.IsNullOrWhiteSpace(row.ProductId) ||
+                            string.IsNullOrWhiteSpace(row.UserId) ||
+                            string.IsNullOrWhiteSpace(row.Quantity) ||
+                            string.IsNullOrWhiteSpace(row.OrderDate) ||
+                            !int.TryParse(row.ProductId, out var productId) ||
+                            !int.TryParse(row.UserId, out var userId) ||
+                            !int.TryParse(row.Quantity, out var quantity) ||
+                            !DateTime.TryParse(row.OrderDate, out var orderDate) ||
+                            !productDict.TryGetValue(productId, out var product))
                         {
                             result.FailureCount++;
-                            result.Errors.Add(new UploadError { Line = line, Reason = "Missing required fields." });
+                            result.Errors.Add(new UploadError { Line = line, Reason = "Invalid or missing data." });
                             line++;
                             continue;
                         }
 
-                        var product = products.FirstOrDefault(p => p.Id == int.Parse(ProductId));
-                        if (product == null)
+                        batch.Add(new Order
                         {
-                            result.FailureCount++;
-                            result.Errors.Add(new UploadError { Line = line, Reason = "Product does not exist: " + ProductId + "." });
-                            line++;
-                            continue;
-                        }
-
-                        records.Add(new Order
-                        {
-                            ProductId = int.Parse(ProductId),
-                            UserId = int.Parse(UserId),
-                            Quantity = int.Parse(Quantity),
-                            OrderDate = DateTime.Parse(dateTime),
+                            ProductId = productId,
+                            UserId = userId,
+                            Quantity = quantity,
+                            OrderDate = orderDate
                         });
 
                         result.SuccessCount++;
+
+                        if (batch.Count >= batchSize)
+                        {
+                            try
+                            {
+                                await _orderRepository.AddOrdersAsync(batch);
+                            }
+                            catch (Exception ex)
+                            {
+                                result.FailureCount += batch.Count;
+                                result.Errors.Add(new UploadError { Line = line, Reason = $"Batch insert failed: {ex.Message}" });
+                            }
+
+                            batch.Clear();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -146,17 +153,35 @@ namespace OrderManagement.Services
                     line++;
                 }
 
-                if (records.Any())
+                if (batch.Any())
                 {
-                    await _orderRepository.AddOrdersAsync(records);
+                    try
+                    {
+                        await _orderRepository.AddOrdersAsync(batch);
+                    }
+                    catch (Exception ex)
+                    {
+                        result.FailureCount += batch.Count;
+                        result.Errors.Add(new UploadError { Line = line, Reason = $"Final batch insert failed: {ex.Message}" });
+                    }
                 }
 
                 return result;
             }
+            catch (HeaderValidationException ex)
+            {
+                result.Errors.Add(new UploadError
+                {
+                    Line = 1,
+                    Reason = "CSV header validation failed: " + ex.Message
+                });
+                return result;
+            }
             catch (Exception ex)
             {
-                throw new Exception("CSV parsing failed: " + ex.Message);
+                throw new Exception("CSV parsing failed.", ex);
             }
         }
+
     }
 }
