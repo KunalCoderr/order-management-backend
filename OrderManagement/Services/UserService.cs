@@ -79,56 +79,38 @@ namespace OrderManagement.Services
 
         public bool IsTokenValid(string token)
         {
-            try
-            {
-                if (string.IsNullOrEmpty(token)) return false;
+            if (string.IsNullOrEmpty(token)) return false;
 
-                if (_sessionStore.TryGetValue(token, out var session))
-                {
-                    if (session.Expiry > DateTime.UtcNow)
-                        return true;
-                    else
-                        _sessionStore.TryRemove(token, out _);
-                }
-
-                return false;
-            }
-            catch (Exception ex)
+            if (_sessionStore.TryGetValue(token, out var session))
             {
-                CommonUtils.CommonUtils.LogMessage(
-                    $"Unexpected error during token validation: {ex.Message}\n{ex.StackTrace}");
-                throw;
+                if (session.Expiry > DateTime.UtcNow)
+                    return true;
+                else
+                    _sessionStore.TryRemove(token, out _);
             }
+
+            return false;
         }
 
         public SessionInfo GetSession(string token)
         {
-            try
+            if (_sessionStore.TryGetValue(token, out var session))
             {
-                if (_sessionStore.TryGetValue(token, out var session))
+                if (session.Expiry < DateTime.UtcNow)
                 {
-                    if (session.Expiry < DateTime.UtcNow)
-                    {
-                        _sessionStore.TryRemove(token, out _);
-                        return null;
-                    }
-
-                    return new SessionInfo
-                    {
-                        UserId = session.id,
-                        Username = session.Username,
-                        Expiry = session.Expiry
-                    };
+                    _sessionStore.TryRemove(token, out _);
+                    return null;
                 }
 
-                return null;
+                return new SessionInfo
+                {
+                    UserId = session.id,
+                    Username = session.Username,
+                    Expiry = session.Expiry
+                };
             }
-            catch (Exception ex)
-            {
-                CommonUtils.CommonUtils.LogMessage(
-                    $"Unexpected error during session retrieval for token '{token}': {ex.Message}\n{ex.StackTrace}");
-                throw;
-            }
+
+            return null;
         }
     }
 }

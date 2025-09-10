@@ -4,12 +4,14 @@ using OrderManagement.Services.Contracts;
 using StackExchange.Redis;
 using System;
 using System.Configuration;
+using System.Web.Caching;
 
 namespace OrderManagement.Services
 {
     public class CacheService : ICacheService
     {
         private static Lazy<ConnectionMultiplexer> lazyConnection;
+        private readonly IDatabase _cache;
 
         public CacheService(IConfiguration configuration)
         {
@@ -20,21 +22,24 @@ namespace OrderManagement.Services
                 var configOptions = ConfigurationOptions.Parse(redisConnection);
                 configOptions.AbortOnConnectFail = false;
 
-                try
-                {
-                    return ConnectionMultiplexer.Connect(configOptions);
-                }
-                catch (RedisConnectionException ex)
-                {
-                    CommonUtils.CommonUtils.LogMessage($"Redis connection failed: {ex.Message}");
-                    throw;
-                }
+                return ConnectionMultiplexer.Connect(configOptions);
             });
+
+            _cache = Connection.GetDatabase();
+        }
+
+
+        // ✅ Add this constructor for unit testing only
+        public CacheService(IDatabase database)
+        {
+            _cache = database ?? throw new ArgumentNullException(nameof(database));
         }
 
         private static ConnectionMultiplexer Connection => lazyConnection.Value;
 
-        private IDatabase Cache => Connection.GetDatabase();
+        // Use this property to access the injected or live database
+        private IDatabase Cache => _cache;
+        //private IDatabase Cache => Connection.GetDatabase();
 
         public void Set<T>(string key, T value, TimeSpan expiry)
         {
