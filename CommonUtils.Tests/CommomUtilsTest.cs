@@ -1,9 +1,10 @@
-﻿using System;
+﻿using CommonUtils;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
-using CommonUtils;
 
 namespace CommonUtils.Tests
 {
@@ -214,6 +215,37 @@ namespace CommonUtils.Tests
         public void GetAppSetting_NonExistingKey_ReturnsNull()
         {
             string value = CommonUtils.GetAppSetting("NonExistingKey");
+            Assert.Null(value);
+        }
+
+        [Theory]
+        [InlineData("2025-09-09", true)]
+        [InlineData("09/09/2025", true)]
+        [InlineData("invalid date", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void TryParseDate_ShouldReturnExpectedResult(string input, bool expectedResult)
+        {
+            // Arrange
+            DateTime result = default;
+
+            // Act
+            bool success = CommonUtils.TryParseDate(input, ref result);
+
+            // Assert
+            Assert.Equal(expectedResult, success);
+            if (success)
+            {
+                Assert.True(result > DateTime.MinValue); // Optional deeper check
+            }
+        }
+
+        [Fact]
+        public void GetAppSetting_WhenExceptionThrown_ReturnsNull()
+        {
+            string key = "TestSetting";
+
+            string value = CommonUtils.GetAppSetting(key);
             Assert.Null(value);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json;
 using OrderManagement.Services;
@@ -33,7 +34,6 @@ namespace OrderManagement.Tests.Services
             var lazyConnection = new Lazy<ConnectionMultiplexer>(() =>
                 mockConnectionMultiplexer.Object as ConnectionMultiplexer);
 
-            // Set the private static field
             lazyConnectionField.SetValue(null, lazyConnection);
 
             // Setup mock IConfiguration to provide a connection string
@@ -137,6 +137,66 @@ namespace OrderManagement.Tests.Services
             //_mockDatabase.Verify(db => db.KeyDelete(
             //    It.Is<RedisKey>(k => k == key),
             //    It.IsAny<CommandFlags>()), Times.Once);
+        }
+
+        [Fact]
+        public void Get_ReturnsDefault_WhenValueHasNoValue()
+        {
+            // Arrange
+            _mockDatabase.Setup(c => c.StringGet(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+                         .Returns(RedisValue.Null);
+
+            // Act
+            var result = _cacheService.Get<string>("key");
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void Get_ReturnsDeserializedObject_WhenValueExists_WithIndependentCache()
+        {
+            // Arrange
+            var expected = new TestData { Id = 1, Name = "Test" };
+            string serialized = JsonConvert.SerializeObject(expected);
+
+            var mockCache = new Mock<IDatabase>();
+            mockCache.Setup(c => c.StringGet(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+                     .Returns(serialized);
+
+            // ✅ Now use the new constructor with IDatabase
+            var cacheService = new CacheService(mockCache.Object);
+
+            // Act
+            var result = cacheService.Get<TestData>("test");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(expected.Id, result.Id);
+            Assert.Equal(expected.Name, result.Name);
+        }
+
+        [Fact]
+        public void Get_ReturnsDefault_WhenDeserializationThrows()
+        {
+            // Arrange
+            var invalidJson = "{ invalid json }";
+
+            var mockCache = new Mock<IDatabase>();
+            mockCache.Setup(c => c.StringGet(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+                     .Returns(invalidJson);
+
+            // Act
+            var result = _cacheService.Get<TestData>("key");
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        public class TestData
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
         }
 
         // Simple POCO for tests

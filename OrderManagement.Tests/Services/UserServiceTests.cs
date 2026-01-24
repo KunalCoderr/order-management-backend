@@ -5,7 +5,9 @@ using OrderManagement.Models;
 using OrderManagement.Repositories.Contracts;
 using OrderManagement.Services;
 using OrderManagement.Utilities;
+using System.Collections;
 using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace OrderManagement.Tests.Services
 {
@@ -85,7 +87,7 @@ namespace OrderManagement.Tests.Services
             // Arrange
             var dto = new UserDTO { Username = "validuser", Password = "password" };
             PasswordHelper.CreatePasswordHash(dto.Password, out string hash, out string salt);
-            
+
             var fakeUser = new User
             {
                 Username = dto.Username,
